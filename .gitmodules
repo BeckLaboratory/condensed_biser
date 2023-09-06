@@ -1,0 +1,6 @@
+[submodule "submodules/pav"]
+	path = submodules/pav
+	url = https://github.com/EichlerLab/pav.git
+[submodule "submodules/dupmapper"]
+	path = submodules/dupmapper
+	url = https://github.com/BeckLaboratory/dupmapper.git
