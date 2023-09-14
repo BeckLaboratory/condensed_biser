@@ -40,9 +40,9 @@ def fa_condensed_iter(seq_file_name, df_bed, format='fasta'):
             else:
                 seq_list = [str(seq)]
 
-            seq = ''.join(seq_list)
+            seq_str = ''.join(seq_list)
 
             if seq:
                 yield Bio.SeqRecord.SeqRecord(
-                    Bio.Seq.Seq(seq), id=seq.id, name='', description=''
+                    Bio.Seq.Seq(seq_str), id=seq.id, name='', description=''
                 )

@@ -105,6 +105,7 @@ rule cbis_decondense:
         bed='temp/{sample}/biser_condensed.bed'
     output:
         bed='{sample}/biser.bed.gz',
+        bed_dropped='{sample}/biser_dropped.bed.gz',
         elem='{sample}/elements.txt.gz'
     threads: 1
     run:
@@ -222,8 +223,17 @@ rule cbis_decondense:
         df_iter = pd.read_csv(input.bed, sep='\t', iterator=True, chunksize=1000, header=None)
 
         record_list = list()
+        dropped_record_list = list()
+        dropped_record_head = None
 
         for df in df_iter:
+
+            if dropped_record_head is None:
+                dropped_record_head = list(df.columns) + [
+                    'POS_LEFT', 'END_LEFT', 'POS_RIGHT', 'END_RIGHT'
+                    'MISSING_COORD'
+                ]
+
             for index, row in df.iterrows():
 
                 lift_coord = [
@@ -243,21 +253,43 @@ rule cbis_decondense:
                             if coord is None
                     ])
 
-                    raise RuntimeError(f'Error lifting record {row[0]}:{row[1]}-{row[2]} <-> {row[3]}:{row[4]}-{row[5]}: No lift for position(s): {missing_coord}')
+                    row = pd.concat(
+                        [
+                        row,
+                            pd.Series(
+                                [
+                                    lift_coord[0], lift_coord[1], lift_coord[2], lift_coord[3], missing_coord
+                                ], index=[
+                                    'POS_LEFT', 'END_LEFT', 'POS_RIGHT', 'END_RIGHT',
+                                    'MISSING_COORD'
+                                ]
+                            )
+                        ]
+                    )
 
-                row[1] = lift_coord[0][1]
-                row[2] = lift_coord[1][1] + 1
-                row[4] = lift_coord[2][1]
-                row[5] = lift_coord[3][1] + 1
+                    dropped_record_list.append(row)
 
-                record_list.append(row)
+                    # raise RuntimeError(f'Error lifting record {row[0]}:{row[1]}-{row[2]} <-> {row[3]}:{row[4]}-{row[5]}: No lift for position(s): {missing_coord}')
+                else:
+                    row[1] = lift_coord[0][1]
+                    row[2] = lift_coord[1][1] + 1
+                    row[4] = lift_coord[2][1]
+                    row[5] = lift_coord[3][1] + 1
+
+                    record_list.append(row)
 
         df = pd.concat(record_list, axis=1).T
+
+        if len(dropped_record_list) > 0:
+            df_dropped = pd.concat(dropped_record_list, axis=1).T
+        else:
+            df_dropped = pd.DataFrame([], columns=dropped_record_head)
 
         df.sort_values([1, 2, 3, 4, 5, 6], inplace=True)
 
         # Write BED
         df.to_csv(output.bed, sep='\t', index=False, header=False, compression='gzip')
+        df_dropped.to_csv(output.bed_dropped, sep='\t', index=False, compression='gzip')
 
         # Compress elements file
         elem_in_filename = input.bed + '.elem.txt'
