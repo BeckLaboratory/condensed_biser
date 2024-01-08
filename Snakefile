@@ -83,6 +83,18 @@ def get_assembly_path(wildcards):
     return df_sample.loc[wildcards.sample]
 
 
+def get_biser_params(wildcards):
+    """
+    Get additional BISER parameters.
+    """
+
+    df_sample = get_sample_table().set_index('SAMPLE')['PARAMS']
+
+    if wildcards.sample not in df_sample.index:
+        raise RuntimeError(f'No sample table entry for sample: {wildcards.sample}')
+
+    return df_sample[wildcards.sample]
+
 #
 # Rules
 #
@@ -307,6 +319,8 @@ rule cbis_biser:
         fa='{sample}/assembly_condensed.fa.gz'
     output:
         bed=temp('temp/{sample}/biser_condensed.bed')
+    params:
+        biser_params=get_biser_params
     threads: 1
     run:
 
@@ -316,17 +330,21 @@ rule cbis_biser:
             os.makedirs(run_params['temp_dir'], exist_ok=True)
             temp_dir = tempfile.mkdtemp(prefix=f'biser_{wildcards.sample}.', dir=run_params['temp_dir'])
 
-            print(f'Using temp dir: {temp_dir}', flush=True)
-
-            shell(
-                """zcat {input.fa} > {temp_dir}/assembly.fa && """
-                """biser """
-                    """-o {output.bed} """
-                    """-t {threads} """
-                    """--temp {temp_dir} """
-                    """--gc-heap 10G """
-                    """{temp_dir}/assembly.fa"""
+            biser_cmd = (
+                f"""zcat {input.fa} > {temp_dir}/assembly.fa && """
+                f"""biser """
+                    f"""{params.biser_params} """
+                    f"""-o {output.bed} """
+                    f"""-t {threads} """
+                    f"""--temp {temp_dir} """
+                    f"""--gc-heap 10G """
+                    f"""{temp_dir}/assembly.fa"""
             )
+
+            print(f'Using temp dir: {temp_dir}', flush=True)
+            print(f'Running: {biser_cmd}')
+
+            shell(biser_cmd)
 
         finally:
             if temp_dir is not None and os.path.exists(temp_dir) and not run_params['keep_temp']:

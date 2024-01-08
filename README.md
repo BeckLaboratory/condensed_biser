@@ -1,8 +1,8 @@
 # Condensed BISER
 
-Run BISER on condensed assemblies with masked regions omitted from the assembly. This process is needed
-to identify segmental duplications (SDs) without confounding matches produced by mobile elements and simple
-repeats.
+This is an experimental pipeline to run BISER on condensed assemblies with masked regions omitted from the assembly.
+This process may help identify segmental duplications (SDs) without confounding matches produced by mobile elements
+and simple repeats.
 
 ## Input FASTA
 
@@ -55,6 +55,7 @@ To run multiple samples, create a TSV file called "samples.tsv" or "samples.xlsx
 
 * `SAMPLE`: Name of the sample.
 * `ASSEMBLY`: Path to the masked assembly.
+* `PARAMS`: Optional (column may be missing or values may be empty). Additional paramters for BISER.
 
 By default, the pipeline will run all samples.
 
@@ -87,6 +88,7 @@ Each parameter is listed with the expected type and default value.
 
 * assembly [str]: Path to an input assembly for single-sample mode. Use with "sample" option. Cannot be used with
   "sample_table" and no default sample table is loaded if present.
+* biser_params [str]: Additional parameters for BISER. May be overridden by the "PARAMS" column in the sample table.
 * config_file [str]: Configuration file name. Overrides "config.yaml" and "config.json" default configuration files.
 * keep_temp [bool, False]: Keep temp files generated for BISER (location tunable with "tmp_dir" option). Set to "True"
   to tell the pipeline not to clear the temporary directory created for each BISER run.

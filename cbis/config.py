@@ -1,6 +1,7 @@
 # Pipeline configuration
 
 import collections
+import numpy as np
 import os
 import pandas as pd
 
@@ -27,6 +28,7 @@ def get_params(config):
     * shell_prefix [str]: String to prepend to shell commands.
     * temp_dir [str]: Path to temporary runtime files.
     * keep_temp [bool]: If True, keep BISER temporary directory.
+    * biser_params [str]: Additinolal BISER parameters
     """
 
     if config is None:
@@ -145,13 +147,19 @@ def get_params(config):
     else:
         params['keep_temp'] = False
 
+    # BISER parameters
+    if 'biser_params' not in params:
+        params['biser_params'] = ''
+    else:
+        params['biser_params'] = params['biser_params'].strip()
+
     # Return configured parameters
     return params
 
 
 def read_sample_table(params):
     """
-    Read the sample table and return as a Pandas DataFrame object with "SAMPLE" and "ASSEMBLY" fields.
+    Read the sample table and return as a Pandas DataFrame object with "SAMPLE", "ASSEMBLY", and "PARAMS" fields.
 
     :param params: Parameters returned by get_params().
     """
@@ -176,7 +184,7 @@ def read_sample_table(params):
         else:
             raise RuntimeError(f'Unknown "sample_table_format" value in parameters: {params["sample_table_format"]}')
 
-        # CHeck columns
+        # Check columns
         missing_cols = [f'"{col}"' for col in ['ASSEMBLY', 'SAMPLE'] if col not in df_sample.columns]
 
         if missing_cols:
@@ -186,10 +194,17 @@ def read_sample_table(params):
                 )
             )
 
+        # Add params column
+        if 'PARAMS' not in df_sample.columns:
+            df_sample['PARAMS'] = np.nan
+
         # Normalize missing values
-        df_sample = df_sample[['SAMPLE', 'ASSEMBLY']].fillna('')
+        df_sample = df_sample[['SAMPLE', 'ASSEMBLY', 'PARAMS']].fillna('')
+
         df_sample['SAMPLE'] = df_sample['SAMPLE'].apply(lambda val: val.strip())
         df_sample['ASSEMBLY'] = df_sample['ASSEMBLY'].apply(lambda val: val.strip())
+
+        df_sample['PARAMS'] = df_sample['PARAMS'].apply(lambda val: params['biser_params'] if pd.isnull(val) or val.strip() == '' else val.strip())
 
         # Check for empty table
         if df_sample.shape[0] == 0:
@@ -238,7 +253,10 @@ def read_sample_table(params):
 
         # Build table
         df_sample = pd.DataFrame(
-            pd.Series([params['sample'], params['assembly']], index=['SAMPLE', 'ASSEMBLY'])
+            pd.Series(
+                [params['sample'], params['assembly'], params['biser_params']
+            ],
+            index=['SAMPLE', 'ASSEMBLY', 'PARAMS'])
         ).T
 
     else:
